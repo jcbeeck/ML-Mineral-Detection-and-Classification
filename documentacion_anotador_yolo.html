@@ -1,0 +1,1473 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Documentación · Anotador YOLO + SAM 3</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;700&family=Lora:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #0a0e1a;
+    --bg2:       #0f1628;
+    --bg3:       #151d35;
+    --border:    #1e2d50;
+    --accent:    #4f8ef7;
+    --accent2:   #a78bfa;
+    --accent3:   #34d399;
+    --accent4:   #f59e0b;
+    --accent5:   #f87171;
+    --text:      #e2e8f0;
+    --text-dim:  #64748b;
+    --text-mid:  #94a3b8;
+    --code-bg:   #0d1117;
+    --code-hl:   #1a2540;
+    --tag-py:    #fbbf24;
+    --tag-tk:    #34d399;
+    --tag-sam:   #a78bfa;
+    --tag-io:    #f87171;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    font-family: 'Lora', Georgia, serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.75;
+    font-size: 16px;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: .4;
+  }
+
+  /* ── LAYOUT ── */
+  .page-wrap {
+    display: grid;
+    grid-template-columns: 280px 1fr;
+    min-height: 100vh;
+  }
+
+  /* ── SIDEBAR ── */
+  nav {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow-y: auto;
+    background: var(--bg2);
+    border-right: 1px solid var(--border);
+    padding: 2rem 0;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .nav-logo {
+    padding: 0 1.5rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 1rem;
+  }
+
+  .nav-logo .badge {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    color: var(--accent);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+    display: block;
+  }
+
+  .nav-logo h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: var(--text);
+    line-height: 1.3;
+  }
+
+  .nav-logo h2 span { color: var(--accent2); }
+
+  nav ul { list-style: none; }
+
+  .nav-section {
+    padding: .3rem 1.5rem .1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-top: 1rem;
+  }
+
+  nav a {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: .45rem 1.5rem;
+    text-decoration: none;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    color: var(--text-mid);
+    border-left: 2px solid transparent;
+    transition: all .2s;
+  }
+
+  nav a:hover, nav a.active {
+    color: var(--accent);
+    border-left-color: var(--accent);
+    background: linear-gradient(90deg, rgba(79,142,247,.08) 0%, transparent 100%);
+  }
+
+  nav a .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    background: var(--text-dim);
+  }
+  nav a:hover .dot, nav a.active .dot { background: var(--accent); }
+
+  /* ── MAIN ── */
+  main {
+    max-width: 860px;
+    padding: 3rem 3.5rem;
+  }
+
+  /* ── HERO ── */
+  .hero {
+    margin-bottom: 4rem;
+    padding-bottom: 3rem;
+    border-bottom: 1px solid var(--border);
+    animation: fadeUp .6s ease both;
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .hero-eyebrow {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: .8rem;
+  }
+
+  .hero h1 {
+    font-family: 'Syne', sans-serif;
+    font-size: 2.8rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: #fff;
+    margin-bottom: 1rem;
+  }
+
+  .hero h1 em {
+    font-style: normal;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .hero-desc {
+    font-size: 1.05rem;
+    color: var(--text-mid);
+    max-width: 600px;
+    margin-bottom: 1.5rem;
+  }
+
+  .hero-meta {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 4px 12px;
+    border-radius: 999px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 500;
+    border: 1px solid;
+  }
+
+  .pill-blue  { color: var(--accent);  border-color: rgba(79,142,247,.3);  background: rgba(79,142,247,.07); }
+  .pill-purple{ color: var(--accent2); border-color: rgba(167,139,250,.3); background: rgba(167,139,250,.07); }
+  .pill-green { color: var(--accent3); border-color: rgba(52,211,153,.3);  background: rgba(52,211,153,.07); }
+  .pill-amber { color: var(--accent4); border-color: rgba(245,158,11,.3);  background: rgba(245,158,11,.07); }
+  .pill-red   { color: var(--accent5); border-color: rgba(248,113,113,.3); background: rgba(248,113,113,.07); }
+
+  /* ── SECTIONS ── */
+  .section {
+    margin-bottom: 3.5rem;
+    animation: fadeUp .5s ease both;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 1.5rem;
+  }
+
+  .section-num {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--accent);
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    background: rgba(79,142,247,.12);
+    border: 1px solid rgba(79,142,247,.25);
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .section h2 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.45rem;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .section h3 {
+    font-family: 'Syne', sans-serif;
+    font-size: 1.05rem;
+    font-weight: 600;
+    color: var(--accent2);
+    margin: 1.8rem 0 .7rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .section h3::before {
+    content: '';
+    display: inline-block;
+    width: 3px; height: 16px;
+    background: var(--accent2);
+    border-radius: 2px;
+  }
+
+  p { margin-bottom: 1rem; color: var(--text-mid); }
+  p strong { color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: .9em; }
+
+  /* ── CODE BLOCKS ── */
+  .code-block {
+    position: relative;
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    margin: 1rem 0 1.5rem;
+    overflow: hidden;
+  }
+
+  .code-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .6rem 1rem;
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .code-title {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    letter-spacing: .5px;
+  }
+
+  .code-dots { display: flex; gap: 5px; }
+  .code-dots span {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+  }
+  .code-dots span:nth-child(1) { background: #ff5f57; }
+  .code-dots span:nth-child(2) { background: #febc2e; }
+  .code-dots span:nth-child(3) { background: #28c840; }
+
+  pre {
+    padding: 1.2rem 1.4rem;
+    overflow-x: auto;
+    line-height: 1.65;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: #abb2bf;
+  }
+
+  /* Syntax highlight classes */
+  .kw  { color: #c678dd; }  /* keywords */
+  .fn  { color: #61afef; }  /* functions */
+  .st  { color: #98c379; }  /* strings */
+  .cm  { color: #5c6370; font-style: italic; } /* comments */
+  .nm  { color: #e5c07b; }  /* numbers / names */
+  .op  { color: #56b6c2; }  /* operators */
+  .cl  { color: #e06c75; }  /* class names */
+  .dc  { color: #d19a66; }  /* decorators / special */
+
+  /* ── CALLOUT BOXES ── */
+  .callout {
+    display: flex;
+    gap: 12px;
+    padding: 1rem 1.2rem;
+    border-radius: 8px;
+    margin: 1.2rem 0;
+    font-size: .93rem;
+  }
+
+  .callout-icon { font-size: 1.1rem; flex-shrink: 0; margin-top: 1px; }
+  .callout-body { color: var(--text-mid); }
+  .callout-body strong { color: var(--text); }
+
+  .callout-info   { background: rgba(79,142,247,.08);  border: 1px solid rgba(79,142,247,.2);  }
+  .callout-tip    { background: rgba(52,211,153,.08);  border: 1px solid rgba(52,211,153,.2);  }
+  .callout-warn   { background: rgba(245,158,11,.08);  border: 1px solid rgba(245,158,11,.2);  }
+  .callout-danger { background: rgba(248,113,113,.08); border: 1px solid rgba(248,113,113,.2); }
+
+  /* ── FLOW DIAGRAM ── */
+  .flow {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin: 1.5rem 0;
+  }
+
+  .flow-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 14px;
+    padding: .9rem 1.2rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 4px;
+    transition: border-color .2s, background .2s;
+  }
+
+  .flow-item:hover {
+    border-color: var(--accent);
+    background: var(--bg3);
+  }
+
+  .flow-icon {
+    font-size: 1.2rem;
+    flex-shrink: 0;
+    width: 32px;
+    text-align: center;
+  }
+
+  .flow-content { flex: 1; }
+  .flow-content strong {
+    display: block;
+    font-family: 'Syne', sans-serif;
+    font-size: .95rem;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 2px;
+  }
+  .flow-content span { font-size: .88rem; color: var(--text-dim); }
+
+  /* ── PARAM TABLE ── */
+  .param-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1rem 0 1.5rem;
+    font-size: .88rem;
+  }
+
+  .param-table th {
+    text-align: left;
+    padding: .6rem .9rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    background: var(--bg3);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .param-table td {
+    padding: .65rem .9rem;
+    border-bottom: 1px solid rgba(30,45,80,.5);
+    vertical-align: top;
+    color: var(--text-mid);
+  }
+
+  .param-table tr:hover td { background: rgba(79,142,247,.04); }
+
+  .param-table td:first-child {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--accent3);
+  }
+
+  .param-table td:nth-child(2) {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--accent4);
+  }
+
+  /* ── DIVIDER ── */
+  .divider {
+    border: none;
+    border-top: 1px solid var(--border);
+    margin: 3rem 0;
+  }
+
+  /* ── TOC PROGRESS ── */
+  .reading-bar {
+    position: fixed;
+    top: 0; left: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), var(--accent2));
+    width: 0%;
+    transition: width .1s;
+    z-index: 10000;
+  }
+
+  /* ── KEYBOARD SHORTCUTS TABLE ── */
+  .shortcuts {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 1rem 0;
+  }
+
+  .shortcut-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: .6rem .9rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    font-size: .85rem;
+  }
+
+  .shortcut-item span { color: var(--text-mid); }
+
+  kbd {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-bottom-width: 2px;
+    border-radius: 4px;
+    padding: 2px 7px;
+    color: var(--accent4);
+  }
+
+  /* ── ARCHITECTURE BOX ── */
+  .arch-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 1.2rem 0;
+  }
+
+  .arch-card {
+    padding: 1rem 1.1rem;
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    border-top: 3px solid;
+  }
+
+  .arch-card.blue   { border-top-color: var(--accent); }
+  .arch-card.purple { border-top-color: var(--accent2); }
+  .arch-card.green  { border-top-color: var(--accent3); }
+  .arch-card.amber  { border-top-color: var(--accent4); }
+
+  .arch-card h4 {
+    font-family: 'Syne', sans-serif;
+    font-size: .85rem;
+    font-weight: 700;
+    margin-bottom: .4rem;
+  }
+
+  .arch-card.blue   h4 { color: var(--accent); }
+  .arch-card.purple h4 { color: var(--accent2); }
+  .arch-card.green  h4 { color: var(--accent3); }
+  .arch-card.amber  h4 { color: var(--accent4); }
+
+  .arch-card p { font-size: .82rem; color: var(--text-dim); margin: 0; }
+
+  /* ── FOOTER ── */
+  footer {
+    margin-top: 4rem;
+    padding-top: 2rem;
+    border-top: 1px solid var(--border);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text-dim);
+    text-align: center;
+    padding-bottom: 3rem;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 900px) {
+    .page-wrap { grid-template-columns: 1fr; }
+    nav { display: none; }
+    main { padding: 2rem 1.5rem; }
+    .hero h1 { font-size: 2rem; }
+    .arch-grid, .shortcuts { grid-template-columns: 1fr; }
+  }
+
+  /* ── inline code ── */
+  p code, li code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: .85em;
+    color: var(--accent3);
+  }
+
+  li { color: var(--text-mid); margin-bottom: .3rem; }
+  ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+</style>
+</head>
+<body>
+
+<div class="reading-bar" id="rbar"></div>
+
+<div class="page-wrap">
+
+<!-- ══════════════ SIDEBAR NAV ══════════════ -->
+<nav>
+  <div class="nav-logo">
+    <span class="badge">Documentación</span>
+    <h2>Anotador YOLO<br><span>+ SAM 3</span></h2>
+  </div>
+  <ul>
+    <li class="nav-section">Introducción</li>
+    <li><a href="#overview"><span class="dot"></span>Resumen</a></li>
+    <li><a href="#arquitectura"><span class="dot"></span>Arquitectura</a></li>
+    <li><a href="#flujo"><span class="dot"></span>Flujo de uso</a></li>
+
+    <li class="nav-section">Módulos</li>
+    <li><a href="#imports"><span class="dot"></span>Imports</a></li>
+    <li><a href="#paleta"><span class="dot"></span>Paleta de colores</a></li>
+    <li><a href="#sam"><span class="dot"></span>SAM 3</a></li>
+    <li><a href="#clase-annotator"><span class="dot"></span>Clase Annotator</a></li>
+
+    <li class="nav-section">Métodos UI</li>
+    <li><a href="#build-ui"><span class="dot"></span>_build_ui()</a></li>
+    <li><a href="#load-image"><span class="dot"></span>_load_image()</a></li>
+    <li><a href="#eventos-raton"><span class="dot"></span>Eventos del ratón</a></li>
+    <li><a href="#confirm-label"><span class="dot"></span>_confirm_label()</a></li>
+    <li><a href="#redraw"><span class="dot"></span>_redraw_boxes()</a></li>
+
+    <li class="nav-section">Datos</li>
+    <li><a href="#save-yolo"><span class="dot"></span>_save_yolo()</a></li>
+    <li><a href="#formato-yolo"><span class="dot"></span>Formato YOLO</a></li>
+    <li><a href="#entrypoint"><span class="dot"></span>Entry point</a></li>
+    <li><a href="#atajos"><span class="dot"></span>Atajos de teclado</a></li>
+  </ul>
+</nav>
+
+<!-- ══════════════ MAIN CONTENT ══════════════ -->
+<main>
+
+  <!-- HERO -->
+  <div class="hero" id="overview">
+    <p class="hero-eyebrow">// código fuente · anotador_yolo.py</p>
+    <h1>Anotador Manual<br>de <em>Bounding Boxes</em></h1>
+    <p class="hero-desc">
+      Herramienta de escritorio en Python para dibujar bounding boxes sobre imágenes,
+      asignarles etiquetas y exportar las anotaciones en <strong>formato YOLO</strong>,
+      con soporte opcional de refinamiento por <strong>SAM 3 de Meta</strong>.
+    </p>
+    <div class="hero-meta">
+      <span class="pill pill-blue">Python 3.10+</span>
+      <span class="pill pill-purple">Tkinter · GUI</span>
+      <span class="pill pill-green">Pillow · Imágenes</span>
+      <span class="pill pill-amber">Ultralytics SAM 3</span>
+      <span class="pill pill-red">Exporta YOLO .txt</span>
+    </div>
+  </div>
+
+  <!-- ARQUITECTURA -->
+  <section class="section" id="arquitectura">
+    <div class="section-header">
+      <span class="section-num">01</span>
+      <h2>Arquitectura general</h2>
+    </div>
+    <p>
+      El script está organizado en <strong>dos capas independientes</strong>: una capa funcional
+      con las utilidades de color y el modelo SAM 3, y una capa de interfaz gráfica encapsulada
+      en la clase <code>Annotator</code>.
+    </p>
+    <div class="arch-grid">
+      <div class="arch-card blue">
+        <h4>🎨 Capa de utilidades</h4>
+        <p>Paleta de colores, caché por clase y las dos funciones que integran SAM 3.</p>
+      </div>
+      <div class="arch-card purple">
+        <h4>🖼 Clase Annotator (GUI)</h4>
+        <p>Hereda de <code>tk.Tk</code>. Gestiona la ventana, el canvas, la lista de boxes y todos los eventos.</p>
+      </div>
+      <div class="arch-card green">
+        <h4>📐 Lógica de dibujo</h4>
+        <p>Eventos mousedown/mousemove/mouseup que convierten arrastres en coordenadas reales.</p>
+      </div>
+      <div class="arch-card amber">
+        <h4>💾 Exportación YOLO</h4>
+        <p>Convierte píxeles a coordenadas normalizadas y genera los tres archivos de salida.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FLUJO -->
+  <section class="section" id="flujo">
+    <div class="section-header">
+      <span class="section-num">02</span>
+      <h2>Flujo de uso</h2>
+    </div>
+    <div class="flow">
+      <div class="flow-item">
+        <span class="flow-icon">🚀</span>
+        <div class="flow-content">
+          <strong>1. Arranque</strong>
+          <span>Se ejecuta <code>python anotador_yolo.py [imagen]</code>. Si no se pasa imagen, abre el explorador de archivos.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <span class="flow-icon">🖼</span>
+        <div class="flow-content">
+          <strong>2. Carga de imagen</strong>
+          <span><code>_load_image()</code> calcula el factor de escala y dibuja la imagen en el canvas con Tkinter.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <span class="flow-icon">🖱</span>
+        <div class="flow-content">
+          <strong>3. Dibujo del box</strong>
+          <span>El usuario arrastra sobre la imagen. Los eventos de ratón dibujan el rectángulo amarillo temporal.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <span class="flow-icon">✍</span>
+        <div class="flow-content">
+          <strong>4. Asignación de etiqueta</strong>
+          <span>El usuario escribe el nombre y pulsa Enter o <em>Agregar</em>. <code>_confirm_label()</code> asocia la etiqueta al box.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <span class="flow-icon">⚡</span>
+        <div class="flow-content">
+          <strong>5. Refinamiento SAM 3 (opcional)</strong>
+          <span>SAM 3 toma el box como prompt y devuelve una máscara de segmentación. El box se ajusta automáticamente al contorno del objeto.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <span class="flow-icon">💾</span>
+        <div class="flow-content">
+          <strong>6. Guardado YOLO</strong>
+          <span><code>_save_yolo()</code> normaliza las coordenadas y escribe <code>.txt</code>, <code>classes.txt</code> y <code>.json</code>.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <hr class="divider">
+
+  <!-- IMPORTS -->
+  <section class="section" id="imports">
+    <div class="section-header">
+      <span class="section-num">03</span>
+      <h2>Imports y dependencias</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">anotador_yolo.py · líneas 1–7</span>
+      </div>
+      <pre><code><span class="kw">import</span> sys
+<span class="kw">import</span> os
+<span class="kw">import</span> json
+<span class="kw">import</span> tkinter <span class="kw">as</span> tk
+<span class="kw">from</span> tkinter <span class="kw">import</span> filedialog, messagebox, simpledialog, ttk
+<span class="kw">from</span> PIL <span class="kw">import</span> Image, ImageTk</code></pre>
+    </div>
+    <table class="param-table">
+      <thead><tr><th>Módulo</th><th>Tipo</th><th>Para qué se usa</th></tr></thead>
+      <tbody>
+        <tr><td>sys</td><td>stdlib</td><td>Leer <code>sys.argv[1]</code>: ruta de imagen pasada por línea de comandos.</td></tr>
+        <tr><td>os</td><td>stdlib</td><td>Manipular rutas: <code>splitext()</code>, <code>dirname()</code>, <code>basename()</code>, <code>isfile()</code>.</td></tr>
+        <tr><td>json</td><td>stdlib</td><td>Serializar las anotaciones en el archivo de respaldo <code>.json</code>.</td></tr>
+        <tr><td>tkinter</td><td>stdlib</td><td>Framework de GUI incluido en Python. Sin instalación extra.</td></tr>
+        <tr><td>filedialog</td><td>tkinter</td><td>Abre el explorador de archivos del sistema operativo.</td></tr>
+        <tr><td>messagebox</td><td>tkinter</td><td>Ventanas emergentes de aviso, error o confirmación.</td></tr>
+        <tr><td>simpledialog</td><td>tkinter</td><td>Diálogo para pedir texto al usuario (editar etiqueta con clic derecho).</td></tr>
+        <tr><td>ttk</td><td>tkinter</td><td>Widgets con estilo mejorado: el <code>Combobox</code> de autocompletado de clases.</td></tr>
+        <tr><td>PIL.Image</td><td>Pillow</td><td>Carga, redimensiona y convierte imágenes en Python.</td></tr>
+        <tr><td>PIL.ImageTk</td><td>Pillow</td><td>Convierte imágenes Pillow al formato <code>PhotoImage</code> que Tkinter puede mostrar.</td></tr>
+      </tbody>
+    </table>
+    <div class="callout callout-info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <strong>ultralytics</strong> se importa dentro de <code>get_sam()</code> con un <code>try/except</code>,
+        no en el bloque de imports global. Esto permite que el programa funcione aunque SAM 3 no esté instalado.
+      </div>
+    </div>
+  </section>
+
+  <!-- PALETA -->
+  <section class="section" id="paleta">
+    <div class="section-header">
+      <span class="section-num">04</span>
+      <h2>Paleta de colores y caché</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Paleta global + función color_for_class</span>
+      </div>
+      <pre><code>PALETTE = [
+    <span class="st">"#FF4757"</span>, <span class="st">"#2ED573"</span>, <span class="st">"#1E90FF"</span>, <span class="st">"#FF6348"</span>, <span class="st">"#ECCC68"</span>,
+    <span class="st">"#A29BFE"</span>, <span class="st">"#00CEC9"</span>, <span class="st">"#FD79A8"</span>, <span class="st">"#FDCB6E"</span>, <span class="st">"#6C5CE7"</span>,
+    <span class="st">"#FF3F34"</span>, <span class="st">"#05C46B"</span>, <span class="st">"#575FCF"</span>, <span class="st">"#EF5777"</span>, <span class="st">"#0be881"</span>,
+]
+
+_class_color_cache: <span class="cl">dict</span>[<span class="cl">str</span>, <span class="cl">str</span>] = {}
+
+<span class="kw">def</span> <span class="fn">color_for_class</span>(label: <span class="cl">str</span>, all_classes: <span class="cl">list</span>[<span class="cl">str</span>]) -> <span class="cl">str</span>:
+    <span class="kw">if</span> label <span class="kw">not in</span> _class_color_cache:
+        idx = all_classes.<span class="fn">index</span>(label) <span class="kw">if</span> label <span class="kw">in</span> all_classes <span class="kw">else</span> <span class="fn">len</span>(all_classes)
+        _class_color_cache[label] = PALETTE[idx <span class="op">%</span> <span class="fn">len</span>(PALETTE)]
+    <span class="kw">return</span> _class_color_cache[label]</code></pre>
+    </div>
+    <p>
+      <strong>PALETTE</strong> es una lista de 15 colores hexadecimales de alto contraste,
+      diseñados para ser visibles sobre cualquier tipo de imagen (oscura, clara, saturada).
+    </p>
+    <p>
+      <strong>_class_color_cache</strong> es un diccionario global que guarda el color ya calculado
+      para cada etiqueta. Implementa el patrón <em>memoization</em>: la primera vez que se pide el
+      color de <code>"persona"</code> se calcula y se guarda; las siguientes veces se devuelve
+      instantáneamente desde el caché. Esto garantiza consistencia visual: la misma etiqueta
+      siempre tiene el mismo color en toda la sesión.
+    </p>
+    <p>
+      El operador <strong><code>%</code> módulo</strong> en <code>idx % len(PALETTE)</code>
+      hace que si hay más de 15 clases, los colores se reciclen desde el inicio sin provocar un
+      <code>IndexError</code>.
+    </p>
+  </section>
+
+  <!-- SAM 3 -->
+  <section class="section" id="sam">
+    <div class="section-header">
+      <span class="section-num">05</span>
+      <h2>Integración con SAM 3</h2>
+    </div>
+
+    <h3>get_sam() — Carga perezosa del modelo</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Lazy loading de SAM 3</span>
+      </div>
+      <pre><code>_sam_model = <span class="kw">None</span>
+
+<span class="kw">def</span> <span class="fn">get_sam</span>():
+    <span class="kw">global</span> _sam_model
+    <span class="kw">if</span> _sam_model <span class="kw">is None</span>:
+        <span class="kw">try</span>:
+            <span class="kw">from</span> ultralytics <span class="kw">import</span> SAM
+            <span class="fn">print</span>(<span class="st">"Cargando SAM 3 … (solo la primera vez)"</span>)
+            _sam_model = <span class="fn">SAM</span>(<span class="st">"sam3.pt"</span>)
+        <span class="kw">except</span> <span class="cl">Exception</span> <span class="kw">as</span> e:
+            messagebox.<span class="fn">showwarning</span>(<span class="st">"SAM 3 no disponible"</span>, <span class="kw">f</span><span class="st">"..."</span>)
+    <span class="kw">return</span> _sam_model</code></pre>
+    </div>
+    <p>
+      <strong>Lazy loading</strong> significa que SAM 3 (~900 MB) solo se descarga y carga en
+      memoria cuando el usuario hace clic en <em>Refinar SAM3</em> por primera vez. Si nunca
+      lo usa, la aplicación arranca en menos de 1 segundo.
+    </p>
+    <p>
+      La palabra clave <strong><code>global</code></strong> es necesaria para modificar la variable
+      declarada fuera de la función. Sin ella, Python crearía una variable local nueva y
+      <code>_sam_model</code> seguiría siendo <code>None</code> en la próxima llamada.
+    </p>
+    <div class="callout callout-warn">
+      <span class="callout-icon">⚠️</span>
+      <div class="callout-body">
+        El bloque <strong><code>try/except Exception</code></strong> captura cualquier error posible:
+        <code>ultralytics</code> no instalado, sin conexión para descargar los pesos, sin GPU suficiente.
+        En todos los casos la app continúa funcionando para anotación manual.
+      </div>
+    </div>
+
+    <h3>refine_with_sam() — Refinamiento de máscara</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Ajuste del bounding box con máscara SAM</span>
+      </div>
+      <pre><code><span class="kw">def</span> <span class="fn">refine_with_sam</span>(image_path, x1, y1, x2, y2):
+    results = model.<span class="fn">predict</span>(
+        source=image_path,
+        bboxes=[[x1, y1, x2, y2]],  <span class="cm"># box manual como prompt</span>
+        save=<span class="kw">False</span>, verbose=<span class="kw">False</span>,
+    )
+    mask = results[<span class="nm">0</span>].masks.data[<span class="nm">0</span>].<span class="fn">cpu</span>().<span class="fn">numpy</span>()
+    <span class="cm"># Redimensionar máscara al tamaño real de la imagen</span>
+    mask_resized = np.<span class="fn">array</span>(
+        Image.<span class="fn">fromarray</span>((mask <span class="op">*</span> <span class="nm">255</span>).<span class="fn">astype</span>(<span class="st">"uint8"</span>))
+            .<span class="fn">resize</span>(img.size[<span class="op">::</span><span class="op">-</span><span class="nm">1</span>])
+    )
+    ys, xs = np.<span class="fn">where</span>(mask_resized <span class="op">></span> <span class="nm">127</span>)
+    <span class="kw">return</span> <span class="fn">int</span>(xs.<span class="fn">min</span>()), <span class="fn">int</span>(ys.<span class="fn">min</span>()), <span class="fn">int</span>(xs.<span class="fn">max</span>()), <span class="fn">int</span>(ys.<span class="fn">max</span>())</code></pre>
+    </div>
+    <p>
+      SAM 3 devuelve un <strong>tensor PyTorch</strong> con valores entre 0 y 1 representando la
+      máscara de segmentación. <code>.cpu().numpy()</code> lo convierte a array NumPy
+      (moviendo los datos de GPU a CPU primero si es necesario).
+    </p>
+    <p>
+      <code>img.size[::-1]</code> invierte <code>(ancho, alto)</code> a <code>(alto, ancho)</code>
+      porque NumPy indexa como <em>filas × columnas</em> mientras Pillow usa <em>ancho × alto</em>.
+    </p>
+    <p>
+      <strong><code>np.where(mask &gt; 127)</code></strong> devuelve todos los píxeles que pertenecen
+      al objeto. Con <code>xs.min(), ys.min(), xs.max(), ys.max()</code> se calcula el bounding box
+      mínimo que envuelve la máscara completa, resultando en coordenadas más precisas que el
+      box dibujado a mano.
+    </p>
+  </section>
+
+  <hr class="divider">
+
+  <!-- CLASE ANNOTATOR -->
+  <section class="section" id="clase-annotator">
+    <div class="section-header">
+      <span class="section-num">06</span>
+      <h2>Clase Annotator</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Definición de la clase y estado inicial</span>
+      </div>
+      <pre><code><span class="kw">class</span> <span class="cl">Annotator</span>(tk.<span class="cl">Tk</span>):
+    MAX_DISPLAY = <span class="nm">900</span>
+
+    <span class="kw">def</span> <span class="fn">__init__</span>(<span class="kw">self</span>, image_path=<span class="kw">None</span>):
+        <span class="fn">super</span>().<span class="fn">__init__</span>()
+
+        <span class="cm"># Estado de la imagen</span>
+        <span class="kw">self</span>.image_path = <span class="kw">None</span>
+        <span class="kw">self</span>.orig_img    = <span class="kw">None</span>   <span class="cm"># Image Pillow original</span>
+        <span class="kw">self</span>.tk_img      = <span class="kw">None</span>   <span class="cm"># PhotoImage Tkinter (no GC)</span>
+        <span class="kw">self</span>.scale       = <span class="nm">1.0</span>   <span class="cm"># factor pantalla / real</span>
+
+        <span class="cm"># Estado de anotaciones</span>
+        <span class="kw">self</span>.boxes   = []   <span class="cm"># [{label,x1,y1,x2,y2}, ...]</span>
+        <span class="kw">self</span>.classes = []   <span class="cm"># orden de aparición</span>
+
+        <span class="cm"># Estado de interacción</span>
+        <span class="kw">self</span>._drag_start = <span class="kw">None</span>
+        <span class="kw">self</span>._rect_id    = <span class="kw">None</span>   <span class="cm"># ID del rect. temporal</span>
+        <span class="kw">self</span>._selected   = <span class="kw">None</span>   <span class="cm"># índice box seleccionado</span></code></pre>
+    </div>
+    <p>
+      <code>Annotator</code> hereda de <code>tk.Tk</code>, que es <strong>la ventana raíz</strong>
+      de Tkinter. Al heredar, la instancia <em>es</em> la ventana; no hay que crear una ventana
+      por separado.
+    </p>
+    <p>
+      <strong><code>MAX_DISPLAY = 900</code></strong> es una constante de clase que limita el tamaño
+      máximo de visualización. Imágenes más grandes se escalan hacia abajo; imágenes pequeñas no
+      se amplían (el tercer argumento <code>1.0</code> en <code>min()</code> asegura esto).
+    </p>
+    <p>
+      <strong><code>self.tk_img</code></strong> debe mantenerse como atributo de instancia. Si fuera
+      una variable local, el recolector de basura de Python la eliminaría y el canvas quedaría
+      completamente en blanco, un error clásico de Tkinter.
+    </p>
+    <p>
+      <strong><code>self.boxes</code></strong> es la estructura de datos central: una lista de
+      diccionarios donde cada diccionario representa un box con sus coordenadas en píxeles
+      reales (no escaladas), lo que permite guardar correctamente sin importar el zoom de pantalla.
+    </p>
+  </section>
+
+  <!-- BUILD UI -->
+  <section class="section" id="build-ui">
+    <div class="section-header">
+      <span class="section-num">07</span>
+      <h2>_build_ui() — Construcción de la interfaz</h2>
+    </div>
+    <p>
+      La interfaz se divide en tres zonas construidas con el gestor de layout
+      <strong><code>pack</code></strong> de Tkinter:
+    </p>
+    <div class="flow">
+      <div class="flow-item">
+        <span class="flow-icon">🔧</span>
+        <div class="flow-content">
+          <strong>Barra superior (top)</strong>
+          <span>Campo de texto, Combobox de autocompletado y botones de acción. Usa <code>side=tk.LEFT</code> para alinear todo horizontalmente.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <span class="flow-icon">🖼</span>
+        <div class="flow-content">
+          <strong>Área central (middle)</strong>
+          <span>Canvas con scrollbars a la izquierda y Listbox de boxes a la derecha. El Canvas usa <code>fill=tk.BOTH, expand=True</code> para ocupar todo el espacio disponible.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <span class="flow-icon">💬</span>
+        <div class="flow-content">
+          <strong>Barra inferior (bot)</strong>
+          <span>Mensajes de ayuda contextual que se actualizan dinámicamente con <code>self.hint_var.set()</code>.</span>
+        </div>
+      </div>
+    </div>
+
+    <h3>StringVar y la conexión reactiva</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Campo de texto y Combobox compartiendo StringVar</span>
+      </div>
+      <pre><code><span class="kw">self</span>.label_var = tk.<span class="fn">StringVar</span>()
+
+<span class="kw">self</span>.label_entry = tk.<span class="fn">Entry</span>(
+    top, textvariable=<span class="kw">self</span>.label_var, ...
+)
+<span class="kw">self</span>.class_menu = ttk.<span class="fn">Combobox</span>(
+    top, textvariable=<span class="kw">self</span>.label_var, values=[], ...
+)</code></pre>
+    </div>
+    <p>
+      <strong><code>tk.StringVar()</code></strong> es una variable observable de Tkinter.
+      Tanto el <code>Entry</code> (campo de texto) como el <code>Combobox</code> (desplegable)
+      usan la misma <code>label_var</code>, por lo que están <strong>sincronizados en tiempo
+      real</strong>: si el usuario selecciona una clase del desplegable, aparece en el campo;
+      si escribe en el campo, se actualiza el valor del desplegable. <code>label_var.get()</code>
+      siempre devuelve el valor actual sin importar cuál widget lo modificó.
+    </p>
+
+    <h3>Canvas con scrollbars</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Conexión bidireccional canvas ↔ scrollbars</span>
+      </div>
+      <pre><code><span class="kw">self</span>.canvas = tk.<span class="fn">Canvas</span>(canvas_frame, cursor=<span class="st">"crosshair"</span>, ...)
+hbar = tk.<span class="fn">Scrollbar</span>(canvas_frame, orient=tk.HORIZONTAL,
+                    command=<span class="kw">self</span>.canvas.xview)
+vbar = tk.<span class="fn">Scrollbar</span>(canvas_frame, orient=tk.VERTICAL,
+                    command=<span class="kw">self</span>.canvas.yview)
+<span class="kw">self</span>.canvas.<span class="fn">configure</span>(
+    xscrollcommand=hbar.set,
+    yscrollcommand=vbar.set
+)</code></pre>
+    </div>
+    <p>
+      La conexión es <strong>bidireccional</strong>: <code>command=canvas.xview</code> hace
+      que mover el scrollbar desplace el canvas. <code>xscrollcommand=hbar.set</code> hace que
+      desplazar el canvas (con rueda del ratón) actualice la posición del scrollbar.
+      <code>cursor="crosshair"</code> cambia el cursor a una cruz cuando está sobre el canvas,
+      indicando visualmente que se puede dibujar.
+    </p>
+  </section>
+
+  <!-- LOAD IMAGE -->
+  <section class="section" id="load-image">
+    <div class="section-header">
+      <span class="section-num">08</span>
+      <h2>_load_image() — Carga y escalado</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Cálculo de escala y renderizado en canvas</span>
+      </div>
+      <pre><code><span class="kw">def</span> <span class="fn">_load_image</span>(<span class="kw">self</span>, path):
+    <span class="kw">self</span>.orig_img = Image.<span class="fn">open</span>(path).<span class="fn">convert</span>(<span class="st">"RGB"</span>)
+    W, H = <span class="kw">self</span>.orig_img.size
+
+    <span class="cm"># Escala: reduce si es grande, nunca amplía</span>
+    <span class="kw">self</span>.scale = <span class="fn">min</span>(MAX_DISPLAY / W, MAX_DISPLAY / H, <span class="nm">1.0</span>)
+
+    dw, dh = <span class="fn">int</span>(W <span class="op">*</span> <span class="kw">self</span>.scale), <span class="fn">int</span>(H <span class="op">*</span> <span class="kw">self</span>.scale)
+    display_img = <span class="kw">self</span>.orig_img.<span class="fn">resize</span>((dw, dh), Image.LANCZOS)
+    <span class="kw">self</span>.tk_img = ImageTk.<span class="fn">PhotoImage</span>(display_img)
+
+    <span class="kw">self</span>.canvas.<span class="fn">config</span>(width=dw, height=dh,
+                       scrollregion=(<span class="nm">0</span>, <span class="nm">0</span>, dw, dh))
+    <span class="kw">self</span>.canvas.<span class="fn">delete</span>(<span class="st">"all"</span>)
+    <span class="kw">self</span>.canvas.<span class="fn">create_image</span>(<span class="nm">0</span>, <span class="nm">0</span>, anchor=tk.NW,
+                              image=<span class="kw">self</span>.tk_img, tags=<span class="st">"bg"</span>)</code></pre>
+    </div>
+    <p>
+      <strong><code>.convert("RGB")</code></strong> normaliza el modo de color: imágenes PNG
+      tienen canal alfa (RGBA), imágenes escaneadas pueden ser escala de grises. Convertir
+      todo a RGB evita errores al mostrar y al procesar con NumPy.
+    </p>
+    <p>
+      <strong><code>min(MAX/W, MAX/H, 1.0)</code></strong>: si la imagen es 2000×1000, el primer
+      valor sería 0.45 y el segundo 0.9; se toma el mínimo (0.45) para que <em>ninguna</em>
+      dimensión supere 900 px. El <code>1.0</code> garantiza que imágenes pequeñas no se amplíen.
+    </p>
+    <p>
+      <strong><code>Image.LANCZOS</code></strong> es el algoritmo de remuestreo de mayor calidad
+      en Pillow. Minimiza el aliasing al reducir resolución, preservando los bordes nítidos
+      necesarios para ver bien los detalles al anotar.
+    </p>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        Las coordenadas del box siempre se guardan en píxeles <strong>reales</strong>
+        (dividiendo por <code>scale</code> al capturar), no en coordenadas de pantalla.
+        Así el guardado YOLO es correcto independientemente del zoom de visualización.
+      </div>
+    </div>
+  </section>
+
+  <!-- EVENTOS RATON -->
+  <section class="section" id="eventos-raton">
+    <div class="section-header">
+      <span class="section-num">09</span>
+      <h2>Eventos del ratón — Dibujo del box</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Tres eventos encadenados: press → drag → release</span>
+      </div>
+      <pre><code><span class="kw">def</span> <span class="fn">_on_press</span>(<span class="kw">self</span>, event):
+    <span class="kw">self</span>._drag_start = (event.x, event.y)   <span class="cm"># guarda punto inicial</span>
+    <span class="kw">if</span> <span class="kw">self</span>._rect_id:
+        <span class="kw">self</span>.canvas.<span class="fn">delete</span>(<span class="kw">self</span>._rect_id)   <span class="cm"># limpia rect anterior</span>
+
+<span class="kw">def</span> <span class="fn">_on_drag</span>(<span class="kw">self</span>, event):
+    <span class="kw">if not self</span>._drag_start: <span class="kw">return</span>
+    x0, y0 = <span class="kw">self</span>._drag_start
+    <span class="kw">if self</span>._rect_id:
+        <span class="kw">self</span>.canvas.<span class="fn">delete</span>(<span class="kw">self</span>._rect_id)
+    <span class="kw">self</span>._rect_id = <span class="kw">self</span>.canvas.<span class="fn">create_rectangle</span>(
+        x0, y0, event.x, event.y,
+        outline=<span class="st">"#facc15"</span>, width=<span class="nm">2</span>, dash=(<span class="nm">5</span>, <span class="nm">3</span>),
+    )
+
+<span class="kw">def</span> <span class="fn">_on_release</span>(<span class="kw">self</span>, event):
+    <span class="cm"># Convertir canvas → píxeles reales</span>
+    rx0, ry0 = <span class="kw">self</span>.<span class="fn">_canvas_to_real</span>(<span class="fn">min</span>(x0,x1), <span class="fn">min</span>(y0,y1))
+    rx1, ry1 = <span class="kw">self</span>.<span class="fn">_canvas_to_real</span>(<span class="fn">max</span>(x0,x1), <span class="fn">max</span>(y0,y1))
+    <span class="kw">self</span>._pending_box = (rx0, ry0, rx1, ry1)</code></pre>
+    </div>
+    <p>
+      Los tres eventos forman una <strong>máquina de estados</strong>:
+      <code>mousedown</code> activa el modo de dibujo, <code>mousemove</code> actualiza
+      el rectángulo en tiempo real, <code>mouseup</code> finaliza y convierte las coordenadas.
+    </p>
+    <p>
+      En <code>_on_drag</code>, el rectángulo anterior se <strong>borra y se redibuja</strong>
+      en cada evento de movimiento. Esto crea la ilusión de un rectángulo que se estira,
+      aunque técnicamente son cientos de rectángulos dibujados y borrados por segundo.
+    </p>
+    <p>
+      <strong><code>min/max</code></strong> en <code>_on_release</code> normaliza las coordenadas:
+      el usuario puede arrastrar en cualquier dirección (derecha-abajo, izquierda-arriba,
+      diagonal) y siempre se obtiene un rectángulo con <code>x1 &lt; x2</code> e <code>y1 &lt; y2</code>.
+    </p>
+    <p>
+      <code>_canvas_to_real</code> hace simplemente <code>int(coord / self.scale)</code>,
+      convirtiendo coordenadas de pantalla a coordenadas reales de la imagen original.
+    </p>
+    <div class="callout callout-info">
+      <span class="callout-icon">ℹ️</span>
+      <div class="callout-body">
+        <strong>¿Por qué <code>_pending_box</code>?</strong> Porque en el momento del
+        <code>mouseup</code> aún no se sabe la etiqueta. El box queda en espera hasta
+        que el usuario la confirma con Enter o el botón Agregar.
+      </div>
+    </div>
+
+    <h3>Clic derecho — Editar etiqueta</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Hit-test para detectar clic sobre un box</span>
+      </div>
+      <pre><code><span class="kw">def</span> <span class="fn">_on_right_click</span>(<span class="kw">self</span>, event):
+    rx, ry = <span class="kw">self</span>.<span class="fn">_canvas_to_real</span>(event.x, event.y)
+    <span class="kw">for</span> i, b <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="kw">self</span>.boxes):
+        <span class="kw">if</span> b[<span class="st">"x1"</span>] <span class="op">&lt;=</span> rx <span class="op">&lt;=</span> b[<span class="st">"x2"</span>] <span class="kw">and</span> b[<span class="st">"y1"</span>] <span class="op">&lt;=</span> ry <span class="op">&lt;=</span> b[<span class="st">"y2"</span>]:
+            new_lbl = simpledialog.<span class="fn">askstring</span>(..., initialvalue=b[<span class="st">"label"</span>])
+            <span class="kw">if</span> new_lbl:
+                <span class="kw">self</span>.boxes[i][<span class="st">"label"</span>] = new_lbl.<span class="fn">strip</span>()
+                <span class="kw">break</span></code></pre>
+    </div>
+    <p>
+      El <strong>hit-test</strong> (detección de colisión punto-rectángulo) itera sobre todos
+      los boxes y comprueba si el punto del clic está dentro con la condición
+      <code>x1 ≤ rx ≤ x2 AND y1 ≤ ry ≤ y2</code>. Al encontrar el primero que coincide,
+      abre un diálogo de edición y sale del bucle con <code>break</code>.
+    </p>
+  </section>
+
+  <!-- CONFIRM LABEL -->
+  <section class="section" id="confirm-label">
+    <div class="section-header">
+      <span class="section-num">10</span>
+      <h2>_confirm_label() y _add_box()</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Validación y registro del box</span>
+      </div>
+      <pre><code><span class="kw">def</span> <span class="fn">_confirm_label</span>(<span class="kw">self</span>):
+    lbl = <span class="kw">self</span>.label_var.<span class="fn">get</span>().<span class="fn">strip</span>()
+    <span class="kw">if not</span> lbl:
+        messagebox.<span class="fn">showwarning</span>(...); <span class="kw">return</span>
+    <span class="kw">if not</span> <span class="fn">hasattr</span>(<span class="kw">self</span>, <span class="st">"_pending_box"</span>) <span class="kw">or self</span>._pending_box <span class="kw">is None</span>:
+        messagebox.<span class="fn">showwarning</span>(...); <span class="kw">return</span>
+
+    x1, y1, x2, y2 = <span class="kw">self</span>._pending_box
+    <span class="kw">self</span>._pending_box = <span class="kw">None</span>   <span class="cm"># ← evita confirmar dos veces</span>
+    <span class="kw">self</span>.<span class="fn">_add_box</span>(lbl, x1, y1, x2, y2)
+
+<span class="kw">def</span> <span class="fn">_add_box</span>(<span class="kw">self</span>, label, x1, y1, x2, y2):
+    <span class="kw">if</span> label <span class="kw">not in self</span>.classes:
+        <span class="kw">self</span>.classes.<span class="fn">append</span>(label)
+        <span class="kw">self</span>.class_menu[<span class="st">"values"</span>] = <span class="kw">self</span>.classes
+    <span class="kw">self</span>.boxes.<span class="fn">append</span>({<span class="st">"label"</span>: label,
+                       <span class="st">"x1"</span>: x1, <span class="st">"y1"</span>: y1,
+                       <span class="st">"x2"</span>: x2, <span class="st">"y2"</span>: y2})
+    <span class="kw">self</span>.<span class="fn">_redraw_boxes</span>()
+    <span class="kw">self</span>.<span class="fn">_refresh_list</span>()</code></pre>
+    </div>
+    <p>
+      <strong><code>hasattr(self, "_pending_box")</code></strong> verifica que el atributo exista,
+      porque la primera vez que el usuario pulsa Enter sin haber dibujado nada,
+      <code>_pending_box</code> aún no se ha creado como atributo.
+    </p>
+    <p>
+      <strong>Poner <code>_pending_box = None</code></strong> inmediatamente después de leerlo
+      es un patrón de seguridad: si el usuario pulsa Enter dos veces rápido, la segunda
+      llamada encontrará <code>None</code> y mostrará el aviso en lugar de agregar el mismo
+      box dos veces.
+    </p>
+    <p>
+      En <code>_add_box</code>, la clase solo se agrega a <code>self.classes</code> si es nueva
+      (con <code>not in</code>), preservando el orden de aparición que YOLO necesita para
+      mantener consistentes los índices.
+    </p>
+  </section>
+
+  <!-- REDRAW -->
+  <section class="section" id="redraw">
+    <div class="section-header">
+      <span class="section-num">11</span>
+      <h2>_redraw_boxes() — Renderizado</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Borrar y redibujar todos los boxes desde cero</span>
+      </div>
+      <pre><code><span class="kw">def</span> <span class="fn">_redraw_boxes</span>(<span class="kw">self</span>):
+    <span class="kw">self</span>.canvas.<span class="fn">delete</span>(<span class="st">"box"</span>)   <span class="cm"># solo borra boxes, no la imagen</span>
+    <span class="kw">for</span> i, b <span class="kw">in</span> <span class="fn">enumerate</span>(<span class="kw">self</span>.boxes):
+        col = <span class="fn">color_for_class</span>(b[<span class="st">"label"</span>], <span class="kw">self</span>.classes)
+        selected = (i == <span class="kw">self</span>._selected)
+
+        x1 = b[<span class="st">"x1"</span>] <span class="op">*</span> <span class="kw">self</span>.scale   <span class="cm"># real → pantalla</span>
+        y1 = b[<span class="st">"y1"</span>] <span class="op">*</span> <span class="kw">self</span>.scale
+
+        <span class="kw">self</span>.canvas.<span class="fn">create_rectangle</span>(
+            x1, y1, x2, y2,
+            outline=col,
+            width=<span class="nm">3</span> <span class="kw">if</span> selected <span class="kw">else</span> <span class="nm">2</span>,
+            dash=() <span class="kw">if not</span> selected <span class="kw">else</span> (<span class="nm">8</span>, <span class="nm">4</span>),
+            tags=<span class="st">"box"</span>,
+        )</code></pre>
+    </div>
+    <p>
+      <strong><code>canvas.delete("box")</code></strong> borra solo los elementos etiquetados con
+      <code>"box"</code>, sin tocar la imagen de fondo etiquetada como <code>"bg"</code>. Los
+      tags de Tkinter permiten gestionar grupos de elementos del canvas de forma selectiva.
+    </p>
+    <p>
+      Las coordenadas se multiplican por <code>self.scale</code> para pasar de píxeles reales
+      a coordenadas de pantalla. Esto es la operación inversa a <code>_canvas_to_real</code>.
+    </p>
+    <p>
+      El box seleccionado tiene <strong>borde más grueso</strong> (<code>width=3</code>) y
+      <strong>línea punteada</strong> (<code>dash=(8,4)</code>): 8 px pintados, 4 px vacíos.
+      El box normal tiene <code>dash=()</code>, que significa línea continua.
+    </p>
+
+    <h3>Cálculo de posición de la etiqueta de texto</h3>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Etiqueta que no sale de la imagen</span>
+      </div>
+      <pre><code>txt = <span class="kw">f</span><span class="st">"[{i}] {b['label']}"</span>
+tx, ty = x1, y1 - <span class="nm">18</span> <span class="kw">if</span> y1 > <span class="nm">18</span> <span class="kw">else</span> y2
+<span class="cm"># si el box está muy arriba, pone la etiqueta abajo</span></code></pre>
+    </div>
+    <p>
+      Si <code>y1 &lt;= 18</code>, la etiqueta se pondría fuera del canvas (coordenada negativa).
+      En ese caso se posiciona debajo del box (<code>y2</code>) en lugar de encima.
+    </p>
+  </section>
+
+  <hr class="divider">
+
+  <!-- SAVE YOLO -->
+  <section class="section" id="save-yolo">
+    <div class="section-header">
+      <span class="section-num">12</span>
+      <h2>_save_yolo() — Exportación</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Conversión de píxeles a formato YOLO normalizado</span>
+      </div>
+      <pre><code><span class="kw">def</span> <span class="fn">_save_yolo</span>(<span class="kw">self</span>):
+    W, H = <span class="kw">self</span>.orig_img.size
+    lines = []
+    <span class="kw">for</span> b <span class="kw">in</span> <span class="kw">self</span>.boxes:
+        cid = <span class="kw">self</span>.classes.<span class="fn">index</span>(b[<span class="st">"label"</span>])
+
+        cx = <span class="fn">round</span>((b[<span class="st">"x1"</span>] + b[<span class="st">"x2"</span>]) / <span class="nm">2</span> / W, <span class="nm">6</span>)  <span class="cm"># centro X norm.</span>
+        cy = <span class="fn">round</span>((b[<span class="st">"y1"</span>] + b[<span class="st">"y2"</span>]) / <span class="nm">2</span> / H, <span class="nm">6</span>)  <span class="cm"># centro Y norm.</span>
+        bw = <span class="fn">round</span>((b[<span class="st">"x2"</span>] - b[<span class="st">"x1"</span>]) / W, <span class="nm">6</span>)       <span class="cm"># ancho norm.</span>
+        bh = <span class="fn">round</span>((b[<span class="st">"y2"</span>] - b[<span class="st">"y1"</span>]) / H, <span class="nm">6</span>)       <span class="cm"># alto norm.</span>
+
+        lines.<span class="fn">append</span>(<span class="kw">f</span><span class="st">"{cid} {cx} {cy} {bw} {bh}"</span>)</code></pre>
+    </div>
+    <p>
+      YOLO requiere que <strong>todas las coordenadas estén normalizadas entre 0 y 1</strong>
+      y usa el centro del objeto en lugar de las esquinas. Esta tabla resume la conversión:
+    </p>
+    <table class="param-table">
+      <thead><tr><th>Campo YOLO</th><th>Fórmula</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td>clase_id</td><td><code>classes.index(label)</code></td><td>Índice entero de la clase en <code>classes.txt</code>.</td></tr>
+        <tr><td>cx</td><td><code>(x1+x2)/2 / W</code></td><td>Centro X normalizado. Rango [0,1].</td></tr>
+        <tr><td>cy</td><td><code>(y1+y2)/2 / H</code></td><td>Centro Y normalizado. Rango [0,1].</td></tr>
+        <tr><td>bw</td><td><code>(x2-x1) / W</code></td><td>Ancho del box normalizado.</td></tr>
+        <tr><td>bh</td><td><code>(y2-y1) / H</code></td><td>Alto del box normalizado.</td></tr>
+      </tbody>
+    </table>
+
+    <h3>Tres archivos de salida</h3>
+    <div class="flow">
+      <div class="flow-item">
+        <span class="flow-icon">📄</span>
+        <div class="flow-content">
+          <strong>imagen.txt</strong>
+          <span>Una línea por box: <code>clase_id cx cy bw bh</code>. Es el archivo de anotaciones que YOLO lee durante el entrenamiento.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <span class="flow-icon">📋</span>
+        <div class="flow-content">
+          <strong>classes.txt</strong>
+          <span>Una clase por línea, en el mismo orden que los índices. YOLO lo usa para saber qué nombre corresponde a cada número.</span>
+        </div>
+      </div>
+      <div class="flow-item">
+        <span class="flow-icon">🗂</span>
+        <div class="flow-content">
+          <strong>imagen_annotations.json</strong>
+          <span>Respaldo completo con coordenadas en píxeles reales, tamaño de imagen y lista de clases. Útil para reimportar o convertir a otros formatos.</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- FORMATO YOLO -->
+  <section class="section" id="formato-yolo">
+    <div class="section-header">
+      <span class="section-num">13</span>
+      <h2>Formato YOLO — Ejemplo real</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">imagen.txt — 3 boxes anotados</span>
+      </div>
+      <pre><code><span class="cm"># clase_id  cx        cy        bw        bh</span>
+<span class="nm">0</span>         <span class="nm">0.512000</span>  <span class="nm">0.374000</span>  <span class="nm">0.234000</span>  <span class="nm">0.412000</span>
+<span class="nm">1</span>         <span class="nm">0.750000</span>  <span class="nm">0.600000</span>  <span class="nm">0.180000</span>  <span class="nm">0.300000</span>
+<span class="nm">0</span>         <span class="nm">0.120000</span>  <span class="nm">0.880000</span>  <span class="nm">0.095000</span>  <span class="nm">0.210000</span></code></pre>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">classes.txt</span>
+      </div>
+      <pre><code>persona
+auto</code></pre>
+    </div>
+    <p>
+      La primera línea del <code>.txt</code> corresponde a <em>persona</em> (clase 0),
+      centrada en el punto (51.2%, 37.4%) de la imagen, con un ancho del 23.4% y alto del 41.2%
+      del total de la imagen. La tercera línea también es <em>persona</em> (clase 0), más pequeña
+      y en la esquina inferior izquierda.
+    </p>
+  </section>
+
+  <!-- ENTRY POINT -->
+  <section class="section" id="entrypoint">
+    <div class="section-header">
+      <span class="section-num">14</span>
+      <h2>Entry point — Arranque del programa</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">Bloque principal</span>
+      </div>
+      <pre><code><span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    img_path = sys.argv[<span class="nm">1</span>] <span class="kw">if</span> <span class="fn">len</span>(sys.argv) > <span class="nm">1</span> <span class="kw">else None</span>
+    app = <span class="fn">Annotator</span>(image_path=img_path)
+    app.<span class="fn">mainloop</span>()</code></pre>
+    </div>
+    <p>
+      <strong><code>if __name__ == "__main__"</code></strong> es el guardián de ejecución de Python.
+      Cuando el archivo se ejecuta directamente (<code>python anotador_yolo.py</code>), la variable
+      <code>__name__</code> vale <code>"__main__"</code> y el bloque se ejecuta. Si otro script
+      importara este archivo como módulo (<code>import anotador_yolo</code>), <code>__name__</code>
+      valdría <code>"anotador_yolo"</code> y el bloque no se ejecutaría, evitando que la ventana
+      se abra al importar.
+    </p>
+    <p>
+      <strong><code>sys.argv</code></strong> es la lista de argumentos de línea de comandos.
+      <code>sys.argv[0]</code> es siempre el nombre del script. <code>sys.argv[1]</code>
+      sería la ruta de imagen si se ejecutó como <code>python anotador_yolo.py foto.jpg</code>.
+      <code>len(sys.argv) > 1</code> comprueba si se pasó ese argumento antes de leerlo.
+    </p>
+    <p>
+      <strong><code>app.mainloop()</code></strong> inicia el bucle de eventos de Tkinter, que
+      mantiene la ventana activa y procesa todos los eventos (clics, teclas, redraws) hasta que
+      el usuario cierra la ventana o ejecuta <code>self.destroy()</code>.
+    </p>
+  </section>
+
+  <!-- ATAJOS -->
+  <section class="section" id="atajos">
+    <div class="section-header">
+      <span class="section-num">15</span>
+      <h2>Atajos de teclado</h2>
+    </div>
+    <div class="code-block">
+      <div class="code-header">
+        <div class="code-dots"><span></span><span></span><span></span></div>
+        <span class="code-title">_bind_keys() — Registro de atajos</span>
+      </div>
+      <pre><code><span class="kw">def</span> <span class="fn">_bind_keys</span>(<span class="kw">self</span>):
+    <span class="kw">self</span>.<span class="fn">bind</span>(<span class="st">"&lt;Control-z&gt;"</span>, <span class="kw">lambda</span> e: <span class="kw">self</span>.<span class="fn">_undo</span>())
+    <span class="kw">self</span>.<span class="fn">bind</span>(<span class="st">"&lt;Control-s&gt;"</span>, <span class="kw">lambda</span> e: <span class="kw">self</span>.<span class="fn">_save_yolo</span>())
+    <span class="kw">self</span>.<span class="fn">bind</span>(<span class="st">"&lt;Delete&gt;"</span>,    <span class="kw">lambda</span> e: <span class="kw">self</span>.<span class="fn">_delete_selected</span>())
+    <span class="kw">self</span>.<span class="fn">bind</span>(<span class="st">"&lt;Escape&gt;"</span>,    <span class="kw">lambda</span> e: <span class="kw">self</span>.<span class="fn">destroy</span>())
+    <span class="kw">self</span>.<span class="fn">bind</span>(<span class="st">"&lt;Return&gt;"</span>,    <span class="kw">lambda</span> e: <span class="kw">self</span>.<span class="fn">_confirm_label</span>())</code></pre>
+    </div>
+    <div class="shortcuts">
+      <div class="shortcut-item"><span>Deshacer</span><kbd>Ctrl+Z</kbd></div>
+      <div class="shortcut-item"><span>Guardar YOLO</span><kbd>Ctrl+S</kbd></div>
+      <div class="shortcut-item"><span>Eliminar seleccionado</span><kbd>Supr</kbd></div>
+      <div class="shortcut-item"><span>Confirmar etiqueta</span><kbd>Enter</kbd></div>
+      <div class="shortcut-item"><span>Editar etiqueta de box</span><kbd>Clic derecho</kbd></div>
+      <div class="shortcut-item"><span>Cerrar aplicación</span><kbd>Esc</kbd></div>
+    </div>
+    <div class="callout callout-tip">
+      <span class="callout-icon">💡</span>
+      <div class="callout-body">
+        Los <code>lambda e: ...</code> son necesarios porque <code>bind</code> pasa siempre
+        el objeto <code>Event</code> como argumento. El lambda lo absorbe (<code>e</code>)
+        y llama al método sin argumentos.
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Documentación generada para <strong>anotador_yolo.py</strong> ·
+    Python 3.10+ · Tkinter · Pillow · Ultralytics SAM 3
+  </footer>
+
+</main>
+</div>
+
+<script>
+  // ── Barra de progreso de lectura ──────────────────────────────────────
+  const rbar = document.getElementById('rbar');
+  window.addEventListener('scroll', () => {
+    const total = document.body.scrollHeight - window.innerHeight;
+    rbar.style.width = (window.scrollY / total * 100) + '%';
+  });
+
+  // ── Highlight activo en sidebar ───────────────────────────────────────
+  const sections = document.querySelectorAll('section[id], div[id]');
+  const navLinks = document.querySelectorAll('nav a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navLinks.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { threshold: 0.3 });
+
+  sections.forEach(s => observer.observe(s));
+
+  // ── Animación escalonada de secciones ─────────────────────────────────
+  const sectionEls = document.querySelectorAll('.section');
+  const sectionObs = new IntersectionObserver(entries => {
+    entries.forEach((entry, i) => {
+      if (entry.isIntersecting) {
+        entry.target.style.animationDelay = '0s';
+        entry.target.style.animationPlayState = 'running';
+        sectionObs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.1 });
+
+  sectionEls.forEach(s => {
+    s.style.animationPlayState = 'paused';
+    sectionObs.observe(s);
+  });
+</script>
+
+</body>
+</html>
